@@ -13,8 +13,6 @@ extern "C" {
 
 typedef struct ChaCha8 ChaCha8;
 
-void chacha8(const uint8_t key[CHACHA8_KEY_SIZE], uint8_t *dst, size_t dst_len);
-
 ChaCha8 *NewChaCha8(const uint8_t seed[CHACHA8_KEY_SIZE]);
 void ChaCha8_Free(ChaCha8 *c);
 size_t ChaCha8_Read(ChaCha8 *c, uint8_t *p, size_t len);
