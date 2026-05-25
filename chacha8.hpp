@@ -58,8 +58,6 @@ namespace chacha8c {
 static constexpr std::size_t key_size = 32;
 static constexpr std::size_t block_size = 64;
 
-namespace detail {
-
 static constexpr std::uint32_t j0 = 0x61707865u;
 static constexpr std::uint32_t j1 = 0x3320646eu;
 static constexpr std::uint32_t j2 = 0x79622d32u;
@@ -73,6 +71,12 @@ inline std::uint32_t load32_le(const std::uint8_t *p) noexcept
 	       (static_cast<std::uint32_t>(p[3]) << 24);
 }
 
+inline std::uint64_t load64_le(const std::uint8_t *p) noexcept
+{
+	return static_cast<std::uint64_t>(load32_le(p)) |
+	       (static_cast<std::uint64_t>(load32_le(p + 4)) << 32);
+}
+
 inline void store32_le(std::uint8_t *p, std::uint32_t x) noexcept
 {
 	p[0] = static_cast<std::uint8_t>(x);
@@ -80,6 +84,8 @@ inline void store32_le(std::uint8_t *p, std::uint32_t x) noexcept
 	p[2] = static_cast<std::uint8_t>(x >> 16);
 	p[3] = static_cast<std::uint8_t>(x >> 24);
 }
+
+namespace detail {
 
 inline std::uint32_t rotl32(std::uint32_t x, unsigned int n) noexcept
 {
@@ -112,17 +118,17 @@ inline void chacha8(const std::uint8_t key[key_size],
                     std::size_t dst_len) noexcept
 {
 	std::uint32_t k[8];
-	std::uint32_t c0 = detail::j0;
-	std::uint32_t c1 = detail::j1;
-	std::uint32_t c2 = detail::j2;
-	std::uint32_t c3 = detail::j3;
+	std::uint32_t c0 = j0;
+	std::uint32_t c1 = j1;
+	std::uint32_t c2 = j2;
+	std::uint32_t c3 = j3;
 	std::uint32_t c12 = 0;
 	std::uint32_t c13 = 0;
 	std::uint32_t c14 = 0;
 	std::uint32_t c15 = 0;
 
 	for (std::size_t i = 0; i < 8; i++) {
-		k[i] = detail::load32_le(key + i * 4);
+		k[i] = load32_le(key + i * 4);
 	}
 
 	std::uint32_t c4 = k[0];
@@ -195,22 +201,22 @@ inline void chacha8(const std::uint8_t key[key_size],
 			detail::quarter_round(x3, x4, x9, x14);
 		}
 
-		detail::store32_le(dst + 0, x0 + c0);
-		detail::store32_le(dst + 4, x1 + c1);
-		detail::store32_le(dst + 8, x2 + c2);
-		detail::store32_le(dst + 12, x3 + c3);
-		detail::store32_le(dst + 16, x4 + c4);
-		detail::store32_le(dst + 20, x5 + c5);
-		detail::store32_le(dst + 24, x6 + c6);
-		detail::store32_le(dst + 28, x7 + c7);
-		detail::store32_le(dst + 32, x8 + c8);
-		detail::store32_le(dst + 36, x9 + c9);
-		detail::store32_le(dst + 40, x10 + c10);
-		detail::store32_le(dst + 44, x11 + c11);
-		detail::store32_le(dst + 48, x12 + c12);
-		detail::store32_le(dst + 52, x13 + c13);
-		detail::store32_le(dst + 56, x14 + c14);
-		detail::store32_le(dst + 60, x15 + c15);
+		store32_le(dst + 0, x0 + c0);
+		store32_le(dst + 4, x1 + c1);
+		store32_le(dst + 8, x2 + c2);
+		store32_le(dst + 12, x3 + c3);
+		store32_le(dst + 16, x4 + c4);
+		store32_le(dst + 20, x5 + c5);
+		store32_le(dst + 24, x6 + c6);
+		store32_le(dst + 28, x7 + c7);
+		store32_le(dst + 32, x8 + c8);
+		store32_le(dst + 36, x9 + c9);
+		store32_le(dst + 40, x10 + c10);
+		store32_le(dst + 44, x11 + c11);
+		store32_le(dst + 48, x12 + c12);
+		store32_le(dst + 52, x13 + c13);
+		store32_le(dst + 56, x14 + c14);
+		store32_le(dst + 60, x15 + c15);
 
 		c12++;
 		dst += block_size;
