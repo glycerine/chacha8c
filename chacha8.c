@@ -53,6 +53,23 @@
 #include <stdio.h>
 #include <string.h>
 
+// note: we only did a little-endian port. So this is trying to prevent
+// problems by barfing on big-endian machines rather than mis-handling them.
+
+#ifndef CHACHA8_NO_MAIN
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && defined(__ORDER_LITTLE_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#error "chacha8 main refuses to compile on big-endian machines"
+#elif __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
+#error "chacha8 main could not confirm a little-endian machine"
+#endif
+#elif defined(_WIN32)
+/* Supported Windows targets are little-endian. */
+#else
+#error "chacha8 main could not determine machine endianness"
+#endif
+#endif
+
 enum {
 	CHACHA8_J0 = 0x61707865u,
 	CHACHA8_J1 = 0x3320646eu,
