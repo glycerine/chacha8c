@@ -192,13 +192,6 @@ func OneshotChaCha8(key, dst []byte) {
 // constants as ChaCha20; the "8" only means 8 rounds
 // instead of 20. So these constants are part of the
 // algorithm's state initialization for the 32-byte-key variant.
-//
-// One nuance: in the Go demo main, those constants are
-// subtracted back out of the first four output words
-// after ChaCha8(...). That subtraction is not normal
-// ChaCha keystream generation; it is part of that
-// specific test/demo transform. But the constants
-// themselves are canonical ChaCha constants.
 
 // The constant first 4 words of the ChaCha8 state.
 const (

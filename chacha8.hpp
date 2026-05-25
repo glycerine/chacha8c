@@ -75,13 +75,6 @@ static constexpr std::size_t block_size = 64;
 // constants as ChaCha20; the "8" only means 8 rounds
 // instead of 20. So these constants are part of the
 // algorithm's state initialization for the 32-byte-key variant.
-//
-// One nuance: the original one-shot demo subtracted
-// those constants back out of the first four output
-// words after ChaCha8(...). That subtraction is not
-// normal ChaCha keystream generation; it was part of
-// that specific test/demo transform. But the constants
-// themselves are canonical ChaCha constants.
 
 static constexpr std::uint32_t j0 = 0x61707865u;
 static constexpr std::uint32_t j1 = 0x3320646eu;
