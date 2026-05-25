@@ -51,6 +51,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // note: we only did a little-endian port. So this is trying to prevent
@@ -87,11 +88,11 @@
 // instead of 20. So these constants are part of the
 // algorithm's state initialization for the 32-byte-key variant.
 //
-// One nuance: in the Go demo main, those constants are
-// subtracted back out of the first four output words
-// after ChaCha8(...). That subtraction is not normal
-// ChaCha keystream generation; it is part of that 
-// specific test/demo transform. But the constants
+// One nuance: the original one-shot demo subtracted
+// those constants back out of the first four output
+// words after ChaCha8(...). That subtraction is not
+// normal ChaCha keystream generation; it was part of
+// that specific test/demo transform. But the constants
 // themselves are canonical ChaCha constants.
 
 enum {
@@ -115,6 +116,17 @@ static void store32_le(uint8_t *p, uint32_t x)
 	p[1] = (uint8_t)(x >> 8);
 	p[2] = (uint8_t)(x >> 16);
 	p[3] = (uint8_t)(x >> 24);
+}
+
+static uint64_t load64_le(const uint8_t *p)
+{
+	return ((uint64_t)load32_le(p)) | ((uint64_t)load32_le(p + 4) << 32);
+}
+
+static void store64_le(uint8_t *p, uint64_t x)
+{
+	store32_le(p, (uint32_t)x);
+	store32_le(p + 4, (uint32_t)(x >> 32));
 }
 
 static uint32_t rotl32(uint32_t x, unsigned int n)
@@ -286,12 +298,221 @@ void chacha8(const uint8_t key[CHACHA8_KEY_SIZE], uint8_t *dst, size_t dst_len)
 	}
 }
 
-#ifndef CHACHA8_NO_MAIN
-static uint64_t load64_le(const uint8_t *p)
+enum {
+	CHACHA8_CTR_INC = 4,
+	CHACHA8_CTR_MAX = 16,
+	CHACHA8_CHUNK = 32,
+	CHACHA8_RESEED = 4,
+};
+
+struct chacha8rand_state {
+	uint64_t buf[CHACHA8_CHUNK];
+	uint64_t seed[4];
+	uint32_t i;
+	uint32_t n;
+	uint32_t c;
+};
+
+struct ChaCha8 {
+	struct chacha8rand_state state;
+	uint8_t read_buf[8];
+	size_t read_len;
+};
+
+static void chacha8rand_setup(const uint64_t seed[4], uint32_t b[16][4], uint32_t counter)
 {
-	return ((uint64_t)load32_le(p)) | ((uint64_t)load32_le(p + 4) << 32);
+	size_t lane;
+
+	for (lane = 0; lane < 4; lane++) {
+		b[0][lane] = CHACHA8_J0;
+		b[1][lane] = CHACHA8_J1;
+		b[2][lane] = CHACHA8_J2;
+		b[3][lane] = CHACHA8_J3;
+		b[4][lane] = (uint32_t)seed[0];
+		b[5][lane] = (uint32_t)(seed[0] >> 32);
+		b[6][lane] = (uint32_t)seed[1];
+		b[7][lane] = (uint32_t)(seed[1] >> 32);
+		b[8][lane] = (uint32_t)seed[2];
+		b[9][lane] = (uint32_t)(seed[2] >> 32);
+		b[10][lane] = (uint32_t)seed[3];
+		b[11][lane] = (uint32_t)(seed[3] >> 32);
+		b[12][lane] = counter + (uint32_t)lane;
+		b[13][lane] = 0;
+		b[14][lane] = 0;
+		b[15][lane] = 0;
+	}
 }
 
+static void chacha8rand_block(const uint64_t seed[4], uint64_t buf[CHACHA8_CHUNK], uint32_t counter)
+{
+	uint32_t b[16][4];
+	size_t lane;
+	size_t word;
+
+	chacha8rand_setup(seed, b, counter);
+
+	for (lane = 0; lane < 4; lane++) {
+		uint32_t b0 = b[0][lane];
+		uint32_t b1 = b[1][lane];
+		uint32_t b2 = b[2][lane];
+		uint32_t b3 = b[3][lane];
+		uint32_t b4 = b[4][lane];
+		uint32_t b5 = b[5][lane];
+		uint32_t b6 = b[6][lane];
+		uint32_t b7 = b[7][lane];
+		uint32_t b8 = b[8][lane];
+		uint32_t b9 = b[9][lane];
+		uint32_t b10 = b[10][lane];
+		uint32_t b11 = b[11][lane];
+		uint32_t b12 = b[12][lane];
+		uint32_t b13 = b[13][lane];
+		uint32_t b14 = b[14][lane];
+		uint32_t b15 = b[15][lane];
+		int round;
+
+		for (round = 0; round < 4; round++) {
+			quarter_round(&b0, &b4, &b8, &b12);
+			quarter_round(&b1, &b5, &b9, &b13);
+			quarter_round(&b2, &b6, &b10, &b14);
+			quarter_round(&b3, &b7, &b11, &b15);
+
+			quarter_round(&b0, &b5, &b10, &b15);
+			quarter_round(&b1, &b6, &b11, &b12);
+			quarter_round(&b2, &b7, &b8, &b13);
+			quarter_round(&b3, &b4, &b9, &b14);
+		}
+
+		b[0][lane] = b0;
+		b[1][lane] = b1;
+		b[2][lane] = b2;
+		b[3][lane] = b3;
+		b[4][lane] += b4;
+		b[5][lane] += b5;
+		b[6][lane] += b6;
+		b[7][lane] += b7;
+		b[8][lane] += b8;
+		b[9][lane] += b9;
+		b[10][lane] += b10;
+		b[11][lane] += b11;
+		b[12][lane] = b12;
+		b[13][lane] = b13;
+		b[14][lane] = b14;
+		b[15][lane] = b15;
+	}
+
+	for (word = 0; word < 16; word++) {
+		buf[word * 2 + 0] = (uint64_t)b[word][0] | ((uint64_t)b[word][1] << 32);
+		buf[word * 2 + 1] = (uint64_t)b[word][2] | ((uint64_t)b[word][3] << 32);
+	}
+}
+
+static void chacha8rand_state_init(struct chacha8rand_state *s, const uint8_t seed[CHACHA8_KEY_SIZE])
+{
+	s->seed[0] = load64_le(seed + 0 * 8);
+	s->seed[1] = load64_le(seed + 1 * 8);
+	s->seed[2] = load64_le(seed + 2 * 8);
+	s->seed[3] = load64_le(seed + 3 * 8);
+	chacha8rand_block(s->seed, s->buf, 0);
+	s->c = 0;
+	s->i = 0;
+	s->n = CHACHA8_CHUNK;
+}
+
+static int chacha8rand_state_next(struct chacha8rand_state *s, uint64_t *out)
+{
+	uint32_t i = s->i;
+
+	if (i >= s->n) {
+		return 0;
+	}
+	s->i = i + 1;
+	*out = s->buf[i & 31u];
+	return 1;
+}
+
+static void chacha8rand_state_refill(struct chacha8rand_state *s)
+{
+	s->c += CHACHA8_CTR_INC;
+	if (s->c == CHACHA8_CTR_MAX) {
+		s->seed[0] = s->buf[CHACHA8_CHUNK - CHACHA8_RESEED + 0];
+		s->seed[1] = s->buf[CHACHA8_CHUNK - CHACHA8_RESEED + 1];
+		s->seed[2] = s->buf[CHACHA8_CHUNK - CHACHA8_RESEED + 2];
+		s->seed[3] = s->buf[CHACHA8_CHUNK - CHACHA8_RESEED + 3];
+		s->c = 0;
+	}
+	chacha8rand_block(s->seed, s->buf, s->c);
+	s->i = 0;
+	s->n = CHACHA8_CHUNK;
+	if (s->c == CHACHA8_CTR_MAX - CHACHA8_CTR_INC) {
+		s->n = CHACHA8_CHUNK - CHACHA8_RESEED;
+	}
+}
+
+ChaCha8 *NewChaCha8(const uint8_t seed[CHACHA8_KEY_SIZE])
+{
+	ChaCha8 *c = (ChaCha8 *)malloc(sizeof(*c));
+
+	if (c == NULL) {
+		return NULL;
+	}
+	chacha8rand_state_init(&c->state, seed);
+	memset(c->read_buf, 0, sizeof(c->read_buf));
+	c->read_len = 0;
+	return c;
+}
+
+void ChaCha8_Free(ChaCha8 *c)
+{
+	if (c != NULL) {
+		memset(c, 0, sizeof(*c));
+		free(c);
+	}
+}
+
+uint64_t ChaCha8_Uint64(ChaCha8 *c)
+{
+	uint64_t x;
+
+	for (;;) {
+		if (chacha8rand_state_next(&c->state, &x)) {
+			return x;
+		}
+		chacha8rand_state_refill(&c->state);
+	}
+}
+
+size_t ChaCha8_Read(ChaCha8 *c, uint8_t *p, size_t len)
+{
+	size_t n = 0;
+
+	if (c->read_len > 0) {
+		size_t take = len < c->read_len ? len : c->read_len;
+
+		memcpy(p, c->read_buf + sizeof(c->read_buf) - c->read_len, take);
+		c->read_len -= take;
+		p += take;
+		len -= take;
+		n += take;
+	}
+
+	while (len >= 8) {
+		store64_le(p, ChaCha8_Uint64(c));
+		p += 8;
+		len -= 8;
+		n += 8;
+	}
+
+	if (len > 0) {
+		store64_le(c->read_buf, ChaCha8_Uint64(c));
+		memcpy(p, c->read_buf, len);
+		c->read_len = 8 - len;
+		n += len;
+	}
+
+	return n;
+}
+
+#ifndef CHACHA8_NO_MAIN
 static void print_hex_line(const uint8_t *p, size_t n)
 {
 	static const char hex[] = "0123456789abcdef";
@@ -306,53 +527,24 @@ static void print_hex_line(const uint8_t *p, size_t n)
 
 int main(void)
 {
-	uint8_t input[CHACHA8_KEY_SIZE];
+	uint8_t seed[CHACHA8_KEY_SIZE];
+	ChaCha8 *rng;
 	uint64_t uints[3 * ((1024 - 32) / 8)];
 	size_t uints_len = 0;
 	int pass;
 
-	memcpy(input, "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456", CHACHA8_KEY_SIZE);
+	memcpy(seed, "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456", CHACHA8_KEY_SIZE);
+	rng = NewChaCha8(seed);
+	if (rng == NULL) {
+		return 1;
+	}
 
 	for (pass = 0; pass < 3; pass++) {
-		uint8_t stream[1024];
-		uint8_t output[1024];
-		uint8_t *streamp;
-		size_t output_len = 0;
+		uint8_t output[1024 - CHACHA8_KEY_SIZE];
+		size_t output_len = sizeof(output);
 		size_t i;
-		uint32_t block;
 
-		chacha8(input, stream, sizeof(stream));
-
-		for (block = 0; block < 16; block++) {
-			uint8_t *b = stream + block * CHACHA8_BLOCK_SIZE;
-
-			store32_le(b + 0 * 4, load32_le(b + 0 * 4) - CHACHA8_J0);
-			store32_le(b + 1 * 4, load32_le(b + 1 * 4) - CHACHA8_J1);
-			store32_le(b + 2 * 4, load32_le(b + 2 * 4) - CHACHA8_J2);
-			store32_le(b + 3 * 4, load32_le(b + 3 * 4) - CHACHA8_J3);
-			store32_le(b + 12 * 4, load32_le(b + 12 * 4) - block);
-		}
-
-		streamp = stream;
-		for (i = 0; i < 16; i += 4) {
-			size_t word;
-
-			for (word = 0; word < CHACHA8_BLOCK_SIZE; word += 4) {
-				memcpy(output + output_len, streamp + 0 * CHACHA8_BLOCK_SIZE + word, 4);
-				output_len += 4;
-				memcpy(output + output_len, streamp + 1 * CHACHA8_BLOCK_SIZE + word, 4);
-				output_len += 4;
-				memcpy(output + output_len, streamp + 2 * CHACHA8_BLOCK_SIZE + word, 4);
-				output_len += 4;
-				memcpy(output + output_len, streamp + 3 * CHACHA8_BLOCK_SIZE + word, 4);
-				output_len += 4;
-			}
-			streamp += 4 * CHACHA8_BLOCK_SIZE;
-		}
-
-		memcpy(input, output + 1024 - CHACHA8_KEY_SIZE, CHACHA8_KEY_SIZE);
-		output_len = 1024 - CHACHA8_KEY_SIZE;
-
+		ChaCha8_Read(rng, output, output_len);
 		for (i = 0; i < output_len; i += 8) {
 			uints[uints_len++] = load64_le(output + i);
 		}
@@ -369,6 +561,7 @@ int main(void)
 		printf("0x%016" PRIx64 ", ", uints[i]);
 	}
 
+	ChaCha8_Free(rng);
 	return 0;
 }
 #endif
