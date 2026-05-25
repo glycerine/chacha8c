@@ -3,7 +3,8 @@ chacha8c
 
 This is ChaCha8 ported from Go to C and C++.
 
-ChaCha8 is a cryptographically strong random number generator designed by Daniel J. Bernstein.
+ChaCha8 is the 8-round version of the ChaCha20 cryptographically strong 
+pseudo-random number generator designed by Daniel J. Bernstein.
 
 Details:
 
