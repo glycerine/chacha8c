@@ -576,7 +576,7 @@ func setup(seed *[4]uint64, b32 *[16][4]uint32, counter uint32) {
 	b[11][1] = x64
 
 	// Counters.
-	if goarch.BigEndian {
+	if goarchBigEndian {
 		b[12][0] = uint64(counter+0)<<32 | uint64(counter+1)
 		b[12][1] = uint64(counter+2)<<32 | uint64(counter+3)
 	} else {
