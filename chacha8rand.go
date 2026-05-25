@@ -183,6 +183,30 @@ func ChaCha8(key, dst []byte) {
 	}
 }
 
+// Q: what are these j0, j1, j2, j3 constants?
+// A: They are part of the ChaCha family definition, not arbitrary Go choices.
+//
+// Those four words are the standard ChaCha constants for a 256-bit key:
+//
+// 0x61707865  // "expa"
+// 0x3320646e  // "nd 3"
+// 0x79622d32  // "2-by"
+// 0x6b206574  // "te k"
+// Interpreted as little-endian bytes, together they spell:
+//
+// "expand 32-byte k"
+// ChaCha8 uses the same initial state layout and
+// constants as ChaCha20; the "8" only means 8 rounds
+// instead of 20. So these constants are part of the
+// algorithm's state initialization for the 32-byte-key variant.
+//
+// One nuance: in the Go demo main, those constants are
+// subtracted back out of the first four output words
+// after ChaCha8(...). That subtraction is not normal
+// ChaCha keystream generation; it is part of that
+// specific test/demo transform. But the constants
+// themselves are canonical ChaCha constants.
+
 // The constant first 4 words of the ChaCha8 state.
 const (
 	j0 uint32 = 0x61707865 // expa
