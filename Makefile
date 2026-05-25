@@ -2,3 +2,7 @@ compare:
 	go run ./chacha8rand.go > go.out
 	gcc chacha8.c && ./a.out > c.out
 	diff c.out go.out && rm a.out
+	g++ -std=c++11 -Wall -Wextra -pedantic testcpp/main.cpp -o ./chacha8_testcpp
+	./chacha8_testcpp > cpp.out
+	diff cpp.out go.out && rm ./chacha8_testcpp
+
