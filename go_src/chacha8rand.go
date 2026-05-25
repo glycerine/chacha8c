@@ -66,7 +66,13 @@ func main() {
 	for i := 0; i < 3; i++ {
 		var output []byte
 		stream := make([]byte, 1024)
-		OneshotChaCha8(input, stream)
+
+		//OneshotChaCha8(input, stream)
+
+		var seed [32]byte
+		rng := NewChaCha8(seed)
+		rng.Read(stream)
+
 		for i := uint32(0); i < 16; i++ {
 			binary.LittleEndian.PutUint32(stream[i*64+0*4:], binary.LittleEndian.Uint32(stream[i*64+0*4:])-0x61707865)
 			binary.LittleEndian.PutUint32(stream[i*64+1*4:], binary.LittleEndian.Uint32(stream[i*64+1*4:])-0x3320646e)
@@ -238,6 +244,7 @@ func quarterRound(a, b, c, d uint32) (uint32, uint32, uint32, uint32) {
 	return a, b, c, d
 }
 
+// surface the standard library's math/rand/v2 ChaCha8 to make porting to C easier.
 type ChaCha8 struct {
 	state chacha8randState
 
@@ -266,7 +273,8 @@ const (
 	reseed = 4  // reseed with 4 words
 )
 
-// block is the chacha8rand block function. See block_generic below.
+// block is the chacha8rand block function. See block_generic below instead,
+// since we are eschewing assembly.
 //func block(seed *[4]uint64, blocks *[32]uint64, counter uint32)
 
 // Next returns the next random value, along with a boolean
