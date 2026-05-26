@@ -573,6 +573,19 @@ func setup(seed *[4]uint64, b32 *[16][4]uint32, counter uint32) {
 
 // UnbiasedChoice avoids modulo bias when choosing a non-negative
 // integer from among nChoices. If nChoices <= 1 we always return 0.
+//
+// In the Go standard library "math/rand/v2", Rand.IntN() and Rand.Uint64N()
+// are similar, but use Lemire-style multiply-high reduction before rejection sampling.
+//
+// The Go standard library documentation makes no claims about these
+// methods being unbiased, although we infer from the internal comments
+// that this did appear to be the intent at some point in development.
+//
+// We can only conclude that nobody was able to prove those implementations
+// actually are unbiased and uniform -- or else they would be clearly marked
+// and claimed as such -- since this is a critical property in many circumstances.
+//
+// Hence we prefer UnbiasedChoice when uniformity and lack of bias matters.
 func (c *ChaCha8) UnbiasedChoice(nChoices int64) (r int64) {
 	if nChoices <= 1 {
 		return 0
