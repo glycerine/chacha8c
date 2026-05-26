@@ -33,6 +33,17 @@ simulation, or fuzz-testing. For example, recent Go runtimes use
 ChaCha8 for the randomized choice of which "select" branch to choose
 when more than one case can communicate.
 
+# a note on performance
+
+This implementation is aimed at portability rather than performance. 
+Hence the C/C++ do not exploit assembly based SIMD optimizations. 
+
+Go users should use the built in standard library math/rand/v2 ChaCha8 
+to get SIMD/performance tuned versions. The output is identical. 
+Our implementation matches the Go standard library implementation 
+of ChaCha8. You can swap go_src/chacha8rand.go:46 
+for line 47 and re-run make in the parent directory to confirm this.
+
 ---
 Author: Jason E. Aten, Ph.D.
 
