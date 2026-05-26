@@ -27,12 +27,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef CHACHA8_HPP
-#define CHACHA8_HPP
+#ifndef CHACHA8C_HPP
+#define CHACHA8C_HPP
 
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
+#include <limits>
+#include <climits>
 
 namespace chacha8c {
 
@@ -260,6 +263,17 @@ inline void refill(chacha8rand_state &s) noexcept
 
 } // namespace detail
 
+constexpr int ExpectedRandMax = 2147483647;
+
+static_assert(
+    RAND_MAX == ExpectedRandMax,
+    "Unsupported platform: RAND_MAX is not 2147483647"
+);
+static_assert(
+    sizeof(int) * CHAR_BIT >= 32,
+    "This Rand() implementation requires int to be at least 32 bits"
+);
+
 class ChaCha8 {
 public:
 	explicit ChaCha8(const std::uint8_t seed[key_size]) noexcept
@@ -286,6 +300,11 @@ public:
 			detail::refill(state_);
 		}
 	}
+
+        // like <random>'s rand(), returns a number in [0, RAND_MAX] inclusive.
+        int Rand() noexcept {
+            return static_cast<int>(Uint64() >> 33);
+        }
 
 	std::size_t Read(std::uint8_t *p, std::size_t len) noexcept
 	{
