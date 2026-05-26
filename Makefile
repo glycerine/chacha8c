@@ -1,5 +1,6 @@
 compare:
 	# a simple test comparing the Go, C, and C++ chacha8 output.
+	rm -f go.out c.out cpp.out
 	go run ./go_src/chacha8rand.go > go.out
 	gcc c_src/chacha8.c && ./a.out > c.out
 	diff c.out go.out && rm a.out
