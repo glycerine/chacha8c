@@ -301,7 +301,13 @@ public:
 		}
 	}
 
-        // like <random>'s rand(), returns a number in [0, RAND_MAX] inclusive.
+        // Rand emulates C rand() from <random> in returning a non-negative
+        // int in the range of [0, 2147483647] inclusive. In other
+        // words we assume a RAND_MAX of 2147483647. For this
+        // value of RAND_MAX our implementation is fast and has no modulo bias.
+        // The static_assert(s) above will refuse to compile unless
+        // this RAND_MAX is in place, to avoid silently breaking the
+        // the assumptions of this Rand() implementation.
         int Rand() noexcept {
             return static_cast<int>(Uint64() >> 33);
         }
