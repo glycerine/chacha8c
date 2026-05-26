@@ -55,5 +55,11 @@ int main()
 		std::printf("0x%016" PRIx64 ", ", uints[i]);
 	}
 
+	for (int i = 0; i < 100; i++) {
+		std::printf("UnbiasedChoice(%d) -> %" PRId64 "\n",
+		            i,
+		            rng.UnbiasedChoice(static_cast<std::int64_t>(i)));
+	}
+
 	return 0;
 }

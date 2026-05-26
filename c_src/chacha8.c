@@ -446,6 +446,10 @@ int main(void)
 		printf("0x%016" PRIx64 ", ", uints[i]);
 	}
 
+	for (int i = 0; i < 100; i++) {
+		printf("UnbiasedChoice(%d) -> %" PRId64 "\n", i, ChaCha8_UnbiasedChoice(rng, (int64_t)i));
+	}
+
 	ChaCha8_Free(rng);
 	return 0;
 }
