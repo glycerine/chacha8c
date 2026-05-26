@@ -344,6 +344,14 @@ func (c *ChaCha8) Uint64() uint64 {
 	}
 }
 
+// Rand emulates C rand() from <random> in returning a non-negative
+// integer in the range of [0, 2147483647] inclusive. In other
+// words we assume a RAND_MAX of 2147483647. For this
+// value of RAND_MAX our implementation is fast and has no modulo bias.
+func (c *ChaCha8) Rand() int32 {
+	return int32(c.Uint64() >> 33)
+}
+
 // Read reads exactly len(p) bytes into p.
 // It always returns len(p) and a nil error.
 //

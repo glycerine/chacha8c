@@ -307,6 +307,16 @@ uint64_t ChaCha8_Uint64(ChaCha8 *c)
 	}
 }
 
+// ChaCha8_Rand emulates C rand() from <random> in returning a non-negative
+// integer in the range of [0, 2147483647] inclusive. In other
+// words we assume a RAND_MAX of 2147483647. For this
+// value of RAND_MAX our implementation is fast and has no modulo bias.
+int ChaCha8_Rand(ChaCha8 *c)
+{
+        return (int)(ChaCha8_Uint64(c) >> 33);
+}
+
+
 size_t ChaCha8_Read(ChaCha8 *c, uint8_t *p, size_t len)
 {
 	size_t n = 0;
