@@ -313,7 +313,7 @@ uint64_t ChaCha8_Uint64(ChaCha8 *c)
 // value of RAND_MAX our implementation is fast and has no modulo bias.
 int ChaCha8_Rand(ChaCha8 *c)
 {
-        return (int)(ChaCha8_Uint64(c) >> 33);
+	return (int)(ChaCha8_Uint64(c) >> 33);
 }
 
 
@@ -346,6 +346,55 @@ size_t ChaCha8_Read(ChaCha8 *c, uint8_t *p, size_t len)
 	}
 
 	return n;
+}
+
+static uint64_t chacha8_read_abs_int64(ChaCha8 *c, int *is_min_int64)
+{
+	uint8_t b[8];
+	uint64_t u;
+
+	ChaCha8_Read(c, b, sizeof(b));
+	u = load64_le(b);
+	if (u == (UINT64_C(1) << 63)) {
+		*is_min_int64 = 1;
+		return 0;
+	}
+	*is_min_int64 = 0;
+	if ((u & (UINT64_C(1) << 63)) != 0) {
+		return UINT64_C(0) - u;
+	}
+	return u;
+}
+
+int64_t ChaCha8_UnbiasedChoice(ChaCha8 *c, int64_t nChoices)
+{
+	int is_min_int64;
+	uint64_t r;
+	int64_t redrawAbove;
+
+	if (nChoices <= 1) {
+		return 0;
+	}
+
+	if (nChoices == INT64_MAX) {
+		r = chacha8_read_abs_int64(c, &is_min_int64);
+		if (is_min_int64) {
+			return 0;
+		}
+		return (int64_t)r;
+	}
+
+	redrawAbove = INT64_MAX - (((INT64_MAX % nChoices) + 1) % nChoices);
+	for (;;) {
+		r = chacha8_read_abs_int64(c, &is_min_int64);
+		if (is_min_int64) {
+			return 0;
+		}
+		if (r > (uint64_t)redrawAbove) {
+			continue;
+		}
+		return (int64_t)(r % (uint64_t)nChoices);
+	}
 }
 
 #ifndef CHACHA8_NO_MAIN

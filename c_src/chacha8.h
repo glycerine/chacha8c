@@ -24,6 +24,10 @@ uint64_t ChaCha8_Uint64(ChaCha8 *c);
 // value of RAND_MAX our implementation is fast and has no modulo bias.
 int ChaCha8_Rand(ChaCha8 *c);
 
+// ChaCha8_UnbiasedChoice avoids modulo bias when choosing a non-negative
+// integer from among nChoices. If nChoices <= 1, it returns 0.
+int64_t ChaCha8_UnbiasedChoice(ChaCha8 *c, int64_t nChoices);
+
 #ifdef __cplusplus
 }
 #endif

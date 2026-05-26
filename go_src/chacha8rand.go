@@ -565,7 +565,7 @@ func setup(seed *[4]uint64, b32 *[16][4]uint32, counter uint32) {
 	b[15][1] = 0
 }
 
-// Unbiased avoids modulo bias when choosing a non-negative
+// UnbiasedChoice avoids modulo bias when choosing a non-negative
 // integer from among nChoices. If nChoices <= 1 we always return 0.
 func (c *ChaCha8) UnbiasedChoice(nChoices int64) (r int64) {
 	if nChoices <= 1 {

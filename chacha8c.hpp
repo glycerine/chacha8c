@@ -301,16 +301,48 @@ public:
 		}
 	}
 
-        // Rand emulates C rand() from <random> in returning a non-negative
-        // int in the range of [0, 2147483647] inclusive. In other
-        // words we assume a RAND_MAX of 2147483647. For this
-        // value of RAND_MAX our implementation is fast and has no modulo bias.
-        // The static_assert(s) above will refuse to compile unless
-        // this RAND_MAX is in place, to avoid silently breaking the
-        // the assumptions of this Rand() implementation.
-        int Rand() noexcept {
-            return static_cast<int>(Uint64() >> 33);
-        }
+	// Rand emulates C rand() from <random> in returning a non-negative
+	// int in the range of [0, 2147483647] inclusive. In other
+	// words we assume a RAND_MAX of 2147483647. For this
+	// value of RAND_MAX our implementation is fast and has no modulo bias.
+	// The static_assert(s) above will refuse to compile unless
+	// this RAND_MAX is in place, to avoid silently breaking the
+	// the assumptions of this Rand() implementation.
+	int Rand() noexcept
+	{
+		return static_cast<int>(Uint64() >> 33);
+	}
+
+	std::int64_t UnbiasedChoice(std::int64_t nChoices) noexcept
+	{
+		bool is_min_int64;
+		std::uint64_t r;
+		const std::int64_t max_int64 = (std::numeric_limits<std::int64_t>::max)();
+
+		if (nChoices <= 1) {
+			return 0;
+		}
+
+		if (nChoices == max_int64) {
+			r = ReadAbsInt64(is_min_int64);
+			if (is_min_int64) {
+				return 0;
+			}
+			return static_cast<std::int64_t>(r);
+		}
+
+		const std::int64_t redrawAbove = max_int64 - (((max_int64 % nChoices) + 1) % nChoices);
+		for (;;) {
+			r = ReadAbsInt64(is_min_int64);
+			if (is_min_int64) {
+				return 0;
+			}
+			if (r > static_cast<std::uint64_t>(redrawAbove)) {
+				continue;
+			}
+			return static_cast<std::int64_t>(r % static_cast<std::uint64_t>(nChoices));
+		}
+	}
 
 	std::size_t Read(std::uint8_t *p, std::size_t len) noexcept
 	{
@@ -344,6 +376,25 @@ public:
 	}
 
 private:
+	std::uint64_t ReadAbsInt64(bool &is_min_int64) noexcept
+	{
+		std::uint8_t b[8];
+		std::uint64_t u;
+		const std::uint64_t min_int64_bits = std::uint64_t(1) << 63;
+
+		Read(b, sizeof(b));
+		u = load64_le(b);
+		if (u == min_int64_bits) {
+			is_min_int64 = true;
+			return 0;
+		}
+		is_min_int64 = false;
+		if ((u & min_int64_bits) != 0) {
+			return std::uint64_t(0) - u;
+		}
+		return u;
+	}
+
 	detail::chacha8rand_state state_;
 	std::uint8_t read_buf_[8];
 	std::size_t read_len_;
