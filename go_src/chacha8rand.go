@@ -47,8 +47,8 @@ func main() {
 	copy(seed[:], "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456")
 
 	// these match now:
-	rng := NewChaCha8(seed)
-	//rng := mathrand2.NewChaCha8(seed) // also have to comment out UnbiasedChoice() call below.
+	//rng := NewChaCha8(seed)
+	rng := mathrand2.NewChaCha8(seed)
 
 	var uints []uint64
 	for i := 0; i < 3; i++ {
