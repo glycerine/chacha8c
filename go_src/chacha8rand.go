@@ -31,6 +31,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 	"math/bits"
 	mathrand2 "math/rand/v2"
@@ -71,7 +72,7 @@ func main() {
 	}
 
 	for i := range 100 {
-		fmt.Printf("UnbiasedChoice(%v) -> %v\n", i, rng.UnbiasedChoice(int64(i)))
+		fmt.Printf("UnbiasedChoice(%v) -> %v\n", i, UnbiasedChoice(rng, int64(i)))
 	}
 }
 
@@ -500,14 +501,14 @@ func setup(seed *[4]uint64, b32 *[16][4]uint32, counter uint32) {
 // and claimed as such -- since this is a critical property in many circumstances.
 //
 // Hence we prefer UnbiasedChoice when uniformity and lack of bias matters.
-func (c *ChaCha8) UnbiasedChoice(nChoices int64) (r int64) {
+func UnbiasedChoice(rngReader io.Reader, nChoices int64) (r int64) {
 	if nChoices <= 1 {
 		return 0
 	}
 
 	b := make([]byte, 8)
 	if nChoices == math.MaxInt64 {
-		c.Read(b)
+		rngReader.Read(b)
 		r = int64(binary.LittleEndian.Uint64(b))
 		if r < 0 {
 			if r == math.MinInt64 {
@@ -527,7 +528,7 @@ func (c *ChaCha8) UnbiasedChoice(nChoices int64) (r int64) {
 	// INVAR: redrawAbove % nChoices == (nChoices - 1).
 
 	for {
-		c.Read(b)
+		rngReader.Read(b)
 		r = int64(binary.LittleEndian.Uint64(b))
 		if r < 0 {
 			// there is 1 more negative integer than
