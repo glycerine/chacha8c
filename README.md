@@ -35,7 +35,8 @@ when more than one case can communicate.
 
 # a note on performance
 
-This implementation is aimed at portability rather than performance. 
+This implementation is aimed at portability (within the little-endian
+architectures) rather than performance. 
 Hence the C/C++ do not exploit assembly based SIMD optimizations. 
 
 Go users should use the built in standard library math/rand/v2 ChaCha8 
@@ -43,6 +44,11 @@ to get SIMD/performance tuned versions. The output is identical.
 Our implementation matches the Go standard library implementation 
 of ChaCha8. You can swap go_src/chacha8rand.go:46 
 for line 47 and re-run make in the parent directory to confirm this.
+
+Note again that our C/C++ assumes a little-endian architecture throughout.
+If you want to port the C/C++ to big-endian, see line 39 of go_src/chacha8rand.go
+where "const goarchBigEndian" is defined and note the two
+places in that file where it is referenced.
 
 ---
 Author: Jason E. Aten, Ph.D.
