@@ -37,7 +37,7 @@ when more than one case can communicate.
 
 This implementation is aimed at portability (within the little-endian
 architectures) rather than performance. 
-Hence the C/C++ do not exploit assembly based SIMD optimizations. 
+Hence the C and C++ do not exploit assembly based SIMD optimizations. 
 
 Go users should use the built in standard library math/rand/v2 ChaCha8 
 to get SIMD/performance tuned versions. The output is identical. 

@@ -31,6 +31,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/bits"
 	mathrand2 "math/rand/v2"
 	"unsafe"
@@ -562,4 +563,69 @@ func setup(seed *[4]uint64, b32 *[16][4]uint32, counter uint32) {
 
 	b[15][0] = 0
 	b[15][1] = 0
+}
+
+// Unbiased avoids modulo bias when choosing a non-negative
+// integer from among nChoices. If nChoices <= 1 we always return 0.
+func (c *ChaCha8) UnbiasedChoice(nChoices int64) (r int64) {
+	if nChoices <= 1 {
+		return 0
+	}
+
+	b := make([]byte, 8)
+	if nChoices == math.MaxInt64 {
+		c.Read(b)
+		r = int64(binary.LittleEndian.Uint64(b))
+		if r < 0 {
+			if r == math.MinInt64 {
+				return 0
+			}
+			r = -r
+		}
+		return r
+	}
+
+	// compute the last valid acceptable value,
+	// possibly leaving a small window at the top of the
+	// int64 range that will require drawing again.
+	// we will accept all values <= redrawAbove and
+	// modulo them by nChoices.
+	redrawAbove := math.MaxInt64 - (((math.MaxInt64 % nChoices) + 1) % nChoices)
+	// INVAR: redrawAbove % nChoices == (nChoices - 1).
+
+	for {
+		c.Read(b)
+		r = int64(binary.LittleEndian.Uint64(b))
+		if r < 0 {
+			// there is 1 more negative integer than
+			// positive integers in 2's complement
+			// representation on integers, so the probability
+			// is exactly 1/2 of entering here.
+			//
+			// Does this not bias
+			// against 0 though? Yep.
+			//
+			// Without this next check,
+			// 0 has probability 1/2^64. Whereas
+			// every other positive integer has
+			// probability 2/2^64... So
+			// without this next line we are
+			// (very subtly) biased against zero.
+			// To correct that, we
+			// give 0 one more chance by
+			// letting it have the last negative
+			// number too, which we never
+			// want to return anyway.
+			if r == math.MinInt64 {
+				return 0
+			}
+			r = -r
+		}
+		if r > redrawAbove {
+			continue
+		}
+		return r % nChoices
+	}
+	// never reached. just keep the compiler happy.
+	return r
 }
