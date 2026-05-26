@@ -1,6 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
-#include "../chacha8.hpp"
+#include "../chacha8c.hpp"
 
 #include <cinttypes>
 #include <cstddef>
