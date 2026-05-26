@@ -39,13 +39,15 @@ import (
 
 const goarchBigEndian = false
 
+var _ = mathrand2.NewChaCha8
+
 func main() {
 	var seed [32]byte
 	copy(seed[:], "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456")
 
 	// these match now:
-	//rng := NewChaCha8(seed)
-	rng := mathrand2.NewChaCha8(seed)
+	rng := NewChaCha8(seed)
+	//rng := mathrand2.NewChaCha8(seed) // also have to comment out UnbiasedChoice() call below.
 
 	var uints []uint64
 	for i := 0; i < 3; i++ {
@@ -66,6 +68,10 @@ func main() {
 			fmt.Printf("\n")
 		}
 		fmt.Printf("%#016x, ", n)
+	}
+
+	for i := range 100 {
+		fmt.Printf("UnbiasedChoice(%v) -> %v\n", i, rng.UnbiasedChoice(int64(i)))
 	}
 }
 
